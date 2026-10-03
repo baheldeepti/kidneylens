@@ -1,0 +1,19 @@
+version: 2
+
+sources:
+  - name: raw
+    description: Data loaded by ingestion/load_raw.py, exactly as received from CMS.
+    schema: raw
+    tables:
+      - name: raw_facilities
+        description: >
+          One row per CSV data row per snapshot of the CMS "Dialysis Facility - Listing by
+          Facility" file. All source fields are in `record` (JSONB), keyed by exact CMS header,
+          with values as exact text (blanks are '').
+        columns:
+          - name: snapshot_id
+            data_tests: [not_null]
+          - name: source_row_number
+            data_tests: [not_null]
+          - name: record
+            data_tests: [not_null]

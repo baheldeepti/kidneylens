@@ -1,0 +1,36 @@
+version: 2
+
+models:
+  - name: dim_facility_current
+    description: >
+      Current facility attributes: exactly one row per CCN, all from the latest validated
+      snapshot (see the model SQL for the validation rules). Service flags are
+      true / false / NULL, where NULL means unknown (never "No"). star_rating is NULL when
+      CMS did not publish a rating.
+    columns:
+      - name: ccn
+        description: CMS Certification Number (text; leading zeros preserved). Primary key.
+        data_tests: [unique, not_null]
+      - name: facility_name
+        data_tests: [not_null]
+      - name: state
+        data_tests: [not_null]
+      - name: zip_code
+        description: ZIP code as text.
+      - name: offers_peritoneal_dialysis
+        description: true / false / NULL (unknown).
+      - name: offers_home_hemodialysis_training
+        description: true / false / NULL (unknown).
+      - name: star_rating
+        description: 1-5, or NULL when not published.
+      - name: star_rating_availability_code
+        description: CMS code; non-001 values accompany missing ratings.
+      - name: snapshot_id
+        description: The snapshot every row came from.
+        data_tests: [not_null]
+      - name: source_file
+        data_tests: [not_null]
+      - name: source_sha256
+        data_tests: [not_null]
+      - name: downloaded_at
+        data_tests: [not_null]

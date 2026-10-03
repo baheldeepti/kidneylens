@@ -10,10 +10,11 @@ __pycache__/
 # Downloaded CMS data (re-downloadable, not source code)
 data/
 
-# dbt build output
-dbt/target/
-dbt/dbt_packages/
-dbt/logs/
+# dbt build output and local connection profile
+dbt/kidneylens/target/
+dbt/kidneylens/dbt_packages/
+dbt/kidneylens/logs/
+dbt/kidneylens/profiles.yml
 logs/
 
 # Editors / OS

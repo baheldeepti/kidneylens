@@ -1,0 +1,64 @@
+version: 2
+
+models:
+  - name: stg_facilities
+    description: >
+      One row per snapshot_id + CCN. V1 fields extracted from raw.raw_facilities, trimmed and
+      typed. Service flags are true / false / NULL, where NULL means unknown (never "No").
+      Missing star ratings are NULL. Uniqueness of snapshot_id + ccn is checked by
+      tests/assert_stg_facilities_one_row_per_snapshot_ccn.sql.
+    columns:
+      - name: snapshot_id
+        description: Snapshot folder name (UTC download time), e.g. 20261003T053020Z.
+        data_tests: [not_null]
+
+      - name: ccn
+        description: CMS Certification Number. Text; leading zeros preserved.
+        data_tests: [not_null]
+
+      - name: facility_name
+        description: Trimmed, single-spaced facility name; original capitalization kept.
+
+      - name: state
+        description: Two-letter USPS code, uppercased. Includes DC and five territories.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: "{{ var('valid_states') }}"
+
+      - name: zip_code
+        description: ZIP code as text; leading zeros preserved.
+
+      - name: offers_peritoneal_dialysis
+        description: Facility reports offering peritoneal dialysis. NULL = unknown (not "No").
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [true, false]
+                quote: false
+
+      - name: offers_home_hemodialysis_training
+        description: Facility reports offering home hemodialysis training. NULL = unknown (not "No").
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [true, false]
+                quote: false
+
+      - name: star_rating
+        description: CMS five-star rating (documented range 1-5, whole stars). NULL when not published.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4, 5]
+                quote: false
+
+      - name: star_rating_availability_code
+        description: CMS code explaining rating availability (e.g. 001 = rated in this file; others accompany missing ratings).
+
+      - name: offers_peritoneal_dialysis_raw
+        description: Exact source text.
+      - name: offers_home_hemodialysis_training_raw
+        description: Exact source text.
+      - name: star_rating_raw
+        description: Exact source text.

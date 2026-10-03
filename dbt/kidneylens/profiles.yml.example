@@ -1,0 +1,16 @@
+# Copy to profiles.yml in this folder:  cp profiles.yml.example profiles.yml
+# profiles.yml is gitignored. It contains no password: the password is read from the
+# POSTGRES_PASSWORD environment variable (see .env.example at the repo root).
+
+kidneylens:              # profile name; must match `profile:` in dbt_project.yml
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('POSTGRES_HOST', 'localhost') }}"
+      port: "{{ env_var('POSTGRES_PORT', '5432') | as_number }}"
+      dbname: "{{ env_var('POSTGRES_DB', 'kidneylens') }}"
+      user: "{{ env_var('POSTGRES_USER', 'kidneylens') }}"
+      password: "{{ env_var('POSTGRES_PASSWORD') }}"   # no default on purpose
+      schema: analytics  # where dbt builds models (raw data stays in schema `raw`)
+      threads: 4

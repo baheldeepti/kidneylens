@@ -1,0 +1,34 @@
+# dbt project settings for KidneyLens. Connection details live in profiles.yml (not committed).
+name: kidneylens
+version: "1.0.0"
+config-version: 2
+require-dbt-version: [">=1.12.0", "<2.0.0"]
+
+# Must match the top-level key in profiles.yml.
+profile: kidneylens
+
+model-paths: ["models"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+seed-paths: ["seeds"]
+analysis-paths: ["analyses"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+vars:
+  # Two-letter codes accepted in `state`: 50 states, DC, and five territories.
+  # Used by the stg_facilities test and dim_facility_current's snapshot validation.
+  valid_states: [AL, AK, AZ, AR, CA, CO, CT, DE, FL, GA, HI, ID, IL, IN, IA, KS, KY,
+                 LA, ME, MD, MA, MI, MN, MS, MO, MT, NE, NV, NH, NJ, NM, NY, NC, ND,
+                 OH, OK, OR, PA, RI, SC, SD, TN, TX, UT, VT, VA, WA, WV, WI, WY,
+                 DC, PR, GU, VI, AS, MP]
+
+# Defaults by folder.
+models:
+  kidneylens:
+    staging:
+      +materialized: view   # cheap, always reflects the raw table
+    marts:
+      +materialized: table  # what the Streamlit app will query

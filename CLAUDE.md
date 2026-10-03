@@ -28,7 +28,7 @@ V1 answers exactly three questions:
 
 ## Data flow and table grains
 
-CSV snapshot → raw table in Postgres (all columns as text, plus snapshot metadata) → dbt models:
+CSV snapshot (`data/raw/<snapshot_id>/`, tracked in `data/raw/manifest.json`) → `raw.raw_facilities` (one row per CSV row per snapshot; all 142 source fields in a `record` JSONB column keyed by exact CMS header, values as exact text, blanks as `''`) → dbt models:
 
 | Model | Grain |
 |---|---|
@@ -38,8 +38,10 @@ CSV snapshot → raw table in Postgres (all columns as text, plus snapshot metad
 
 ## Data and metric rules
 
+Authoritative metric definitions (formula, grain, missing-value behavior, limitations): `docs/metrics.yml`. Code and UI text must match it.
+
 - CCN and ZIP are always **text**. Never cast them to numbers (leading zeros matter).
-- Service flags normalize to exactly `true` / `false` / `unknown`. Normalization happens once, in `stg_facilities`.
+- Service flags normalize to boolean `true` / `false`, with **`NULL` meaning unknown** (blank or unrecognized source value). Normalization happens once, in `stg_facilities` (macro `normalize_yes_no`); `_raw` columns keep the exact source text, and a test fails if a non-blank raw value is unrecognized.
 - **Never interpret unknown as No.** Unknown is always reported as its own category.
 - Missing star ratings stay `NULL`. Do not impute values or replace them with 0.
 - Home-training share = facilities reporting Yes ÷ facilities reporting Yes or No. Unknowns are excluded from the denominator and shown separately.
@@ -59,13 +61,17 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 docker compose up -d                 # start Postgres
-python -m ingestion.load_raw <csv>   # load a CSV snapshot into the raw table
+python -m ingestion.download         # download CMS CSV into data/raw/ (no-op if unchanged)
+python -m ingestion.load_raw          # load latest snapshot into raw.raw_facilities (no-op if loaded)
 
 pytest                               # all Python tests
-pytest tests/test_read_csv.py::test_name   # single test
+pytest tests/test_load_raw.py::test_reloading_same_snapshot_is_a_noop   # single test (DB tests need docker compose up)
 
-dbt build --project-dir dbt          # run models + tests
-dbt test --select stg_facilities --project-dir dbt
+cd dbt/kidneylens && cp profiles.yml.example profiles.yml   # once; profiles.yml is gitignored
+set -a; source ../../.env; set +a     # dbt reads POSTGRES_PASSWORD from the environment
+dbt debug                            # check config + DB connection
+dbt build                            # run models + tests (from dbt/kidneylens)
+dbt test --select stg_facilities
 
 streamlit run app/main.py
 ```

@@ -1,0 +1,110 @@
+# KidneyLens V1 metric definitions.
+#
+# These are the ONLY metrics V1 reports for home hemodialysis training. Any code, SQL,
+# UI label, or AI-generated text that presents them must follow these definitions.
+#
+# Status: the source model `mart_state_services` is planned but not yet built.
+# It will be built from `dim_facility_current` (one row per CCN, latest validated snapshot).
+
+version: 1
+
+conventions:
+  service_flag_values: >
+    `offers_home_hemodialysis_training` in dim_facility_current is boolean:
+    true = facility reports Yes, false = facility reports No,
+    NULL = unknown (source value blank or unrecognized). Unknown is never treated as No.
+  snapshot: >
+    All metrics describe a single snapshot: the latest validated snapshot used by
+    dim_facility_current. Each mart row carries that snapshot_id.
+  invariant: >
+    For every state: facility_count = training_yes_count + training_no_count + training_unknown_count.
+  geography: >
+    `state` includes the 50 states, DC, and five territories (PR, GU, VI, AS, MP),
+    exactly as reported in the CMS file.
+
+metrics:
+
+  - name: facility_count
+    description: >
+      Number of dialysis facilities listed by CMS in the state, regardless of what they
+      report about home hemodialysis training.
+    source_model: mart_state_services   # computed from dim_facility_current
+    grain: one value per state (one row per state in mart_state_services), for one snapshot
+    numerator: count of distinct CCNs in dim_facility_current with this state
+    denominator: not applicable (a count, not a ratio)
+    missing_value_behavior: >
+      Every facility is counted, including those whose training value is unknown.
+      Facilities with a missing state cannot occur: snapshot validation rejects them.
+      A state with no listed facilities has no row (it is not reported as 0).
+    interpretation_limitations:
+      - Counts facilities listed in the CMS file, not patients, dialysis stations, or staff.
+      - Reflects the CMS snapshot date, not today; facilities open and close between releases.
+      - Listing by CMS is not a statement about facility size, quality, or service mix.
+
+  - name: training_yes_count
+    description: >
+      Number of facilities in the state that report offering home hemodialysis training.
+    source_model: mart_state_services   # computed from dim_facility_current
+    grain: one value per state, for one snapshot
+    numerator: count of facilities where offers_home_hemodialysis_training = true
+    denominator: not applicable (a count, not a ratio)
+    missing_value_behavior: >
+      Facilities with an unknown (NULL) value are NOT counted here; they are counted in
+      training_unknown_count. A state with no "Yes" facilities reports 0.
+    interpretation_limitations:
+      - Based on what facilities report to CMS; KidneyLens does not verify it.
+      - Says nothing about how many patients are trained, or how often training is offered.
+
+  - name: training_no_count
+    description: >
+      Number of facilities in the state that report NOT offering home hemodialysis training.
+    source_model: mart_state_services   # computed from dim_facility_current
+    grain: one value per state, for one snapshot
+    numerator: count of facilities where offers_home_hemodialysis_training = false
+    denominator: not applicable (a count, not a ratio)
+    missing_value_behavior: >
+      Only explicit "No" reports are counted. Unknown (NULL) values are never counted as No;
+      they go to training_unknown_count. A state with no "No" facilities reports 0.
+    interpretation_limitations:
+      - Based on what facilities report to CMS; KidneyLens does not verify it.
+      - A "No" applies to that facility only; nearby facilities may report differently.
+
+  - name: training_unknown_count
+    description: >
+      Number of facilities in the state whose home hemodialysis training value is unknown,
+      shown separately so missing information is visible rather than hidden.
+    source_model: mart_state_services   # computed from dim_facility_current
+    grain: one value per state, for one snapshot
+    numerator: count of facilities where offers_home_hemodialysis_training IS NULL
+    denominator: not applicable (a count, not a ratio)
+    missing_value_behavior: >
+      This metric IS the missing-value count: it includes blank source values and any
+      unrecognized values. (Unrecognized values also fail a dbt test, so in practice a
+      validated snapshot contains only blanks here.) A state with no unknowns reports 0.
+    interpretation_limitations:
+      - Unknown means CMS did not publish a usable value; it does not mean Yes or No.
+      - In the 20261003T053020Z snapshot this is 0 for every state; future releases may differ.
+
+  - name: home_training_share
+    description: >
+      Among facilities in the state that report a Yes or No for home hemodialysis training,
+      the proportion that report Yes. Describes what facilities report offering to CMS.
+    source_model: mart_state_services   # computed from dim_facility_current
+    grain: one value per state, for one snapshot
+    numerator: training_yes_count
+    denominator: training_yes_count + training_no_count   # facilities reporting Yes or No
+    formula: training_yes_count / (training_yes_count + training_no_count)
+    value_range: 0 to 1 (stored as an unrounded fraction; round only for display, e.g. 0.3200 -> "32.0%")
+    missing_value_behavior: >
+      Facilities with an unknown value are excluded from BOTH numerator and denominator
+      and must be displayed alongside the share as training_unknown_count.
+      If the denominator is 0 (no facility in the state reports Yes or No), the share is
+      NULL, never 0 and never an error. It must be displayed as "not available", not "0%".
+    interpretation_limitations:
+      - Describes only the share of reporting facilities that say they offer home hemodialysis training.
+      - Does NOT measure patient access, current capacity, appointment availability, or whether home hemodialysis is suitable for any patient.
+      - Counts facilities equally; it is not weighted by patients, stations, or population, so it is not a per-capita measure.
+      - Unstable for states with few facilities (the smallest has 2); one facility can move the share by 50 points. Always show the denominator next to the share.
+      - When training_unknown_count is large relative to facility_count, the share describes only the subset that reported.
+      - Self-reported to CMS and reflects the snapshot date, not today.
+      - Comparisons across states describe reporting facilities only and do not explain why states differ.

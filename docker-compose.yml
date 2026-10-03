@@ -1,0 +1,31 @@
+# Local development database for KidneyLens.
+# Start:  docker compose up -d
+# Stop:   docker compose down        (data is kept in the named volume)
+# Reset:  docker compose down -v     (DELETES all database data)
+
+services:
+  postgres:
+    image: postgres:18
+    container_name: kidneylens-postgres
+    environment:
+      POSTGRES_DB: kidneylens
+      POSTGRES_USER: kidneylens
+      POSTGRES_PASSWORD: local_dev_password
+    ports:
+      # Only reachable from this computer, not from other devices on your network.
+      - "127.0.0.1:5432:5432"
+    volumes:
+      # Named volume: database files survive container restarts and removal.
+      # Postgres 18+ expects the volume at /var/lib/postgresql (not .../data).
+      - kidneylens_pgdata:/var/lib/postgresql
+      # Runs once, only when the database is first created (empty volume).
+      - ./sql/bootstrap.sql:/docker-entrypoint-initdb.d/001_bootstrap.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kidneylens -d kidneylens"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  kidneylens_pgdata:

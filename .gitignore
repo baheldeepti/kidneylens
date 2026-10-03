@@ -1,0 +1,22 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Secrets: commit .env.example, never .env
+.env
+
+# Downloaded CMS data (re-downloadable, not source code)
+data/
+
+# dbt build output
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+logs/
+
+# Editors / OS
+.DS_Store
+.vscode/
+.idea/

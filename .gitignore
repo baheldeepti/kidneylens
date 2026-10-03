@@ -21,3 +21,6 @@ logs/
 .DS_Store
 .vscode/
 .idea/
+
+# dbt anonymous per-machine ID
+dbt/kidneylens/.user.yml

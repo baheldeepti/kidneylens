@@ -1,0 +1,9 @@
+# Streamlit settings for KidneyLens (read when running from the repo root).
+
+[server]
+# Only reachable from this computer, like the database (see docker-compose.yml).
+address = "127.0.0.1"
+headless = true
+
+[browser]
+gatherUsageStats = false

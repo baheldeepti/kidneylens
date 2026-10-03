@@ -1,0 +1,36 @@
+version: 2
+
+models:
+  - name: mart_state_services
+    config:
+      grants:
+        select: ['kidneylens_app']  # published to the Streamlit app (read-only)
+    description: >
+      One row per state (50 states, DC, territories) for the latest validated snapshot.
+      Home hemodialysis training counts and share, as defined in docs/metrics.yml.
+      The share describes what facilities report offering to CMS. It is not a measure of
+      patient access or service capacity.
+    columns:
+      - name: state
+        data_tests: [unique, not_null]
+      - name: facility_count
+        description: Facilities listed in the state (all training values).
+        data_tests: [not_null]
+      - name: training_yes_count
+        description: Facilities reporting Yes.
+        data_tests: [not_null]
+      - name: training_no_count
+        description: Facilities reporting No. Unknown is never counted here.
+        data_tests: [not_null]
+      - name: training_unknown_count
+        description: Facilities with unknown (NULL) training value, shown separately.
+        data_tests: [not_null]
+      - name: training_reporting_count
+        description: training_yes_count + training_no_count; the share's denominator.
+        data_tests: [not_null]
+      - name: home_training_share
+        description: >
+          training_yes_count / (training_yes_count + training_no_count), from 0 to 1, unrounded.
+          NULL when no facility in the state reports Yes or No.
+      - name: snapshot_id
+        data_tests: [not_null]

@@ -5,7 +5,7 @@
 **CMS "Dialysis Facility – Listing by Facility"** (dataset ID `23ew-n7w9`), published by the Centers for Medicare & Medicaid Services. CMS describes it as "a list of all dialysis facilities registered with Medicare that includes addresses and phone numbers, as well as services and quality of care provided." The data dictionary is produced by the University of Michigan Kidney Epidemiology and Cost Center.
 
 - One row per facility, identified by CMS Certification Number (CCN).
-- The 2026-06-16 release has 7,490 facilities and 142 columns. KidneyLens V1 models 8 of them.
+- The 2026-06-16 release has 7,490 facilities and 142 columns. KidneyLens V1 models 9 of them.
 
 **This is facility-level public information. There is no patient-level data.** KidneyLens never sees, stores, or infers anything about individual patients.
 
@@ -40,6 +40,7 @@ There are three different kinds of date, and they must not be confused:
 |---|---|---|
 | CMS Certification Number (CCN) | Facility identifier | `ccn` (text; leading zeros kept) |
 | Facility Name | — | `facility_name` |
+| City/Town | — | `city` |
 | State | — | `state` (50 states, DC, PR, GU, VI, AS, MP) |
 | ZIP Code | — | `zip_code` (text) |
 | Offers peritoneal dialysis | "Whether the facility offers peritoneal dialysis" | `offers_peritoneal_dialysis` |

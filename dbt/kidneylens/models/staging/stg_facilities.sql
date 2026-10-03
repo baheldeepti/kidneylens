@@ -13,6 +13,7 @@ extracted as (
         snapshot_id,
         record ->> 'CMS Certification Number (CCN)'      as ccn_raw,
         record ->> 'Facility Name'                       as facility_name_raw,
+        record ->> 'City/Town'                           as city_raw,
         record ->> 'State'                               as state_raw,
         record ->> 'ZIP Code'                            as zip_code_raw,
         record ->> 'Offers peritoneal dialysis'          as offers_peritoneal_dialysis_raw,
@@ -36,6 +37,7 @@ select
 
     -- descriptive
     nullif(regexp_replace(trim(facility_name_raw), '\s+', ' ', 'g'), '') as facility_name,
+    nullif(regexp_replace(trim(city_raw), '\s+', ' ', 'g'), '')         as city,
     nullif(upper(trim(state_raw)), '')                                   as state,
     nullif(trim(zip_code_raw), '')                                       as zip_code,
 

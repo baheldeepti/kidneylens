@@ -13,6 +13,10 @@ dbt-postgres==1.11.0
 
 # Frontend
 streamlit==1.65.0
+pyyaml==6.0.3  # reads docs/metrics.yml (also installed by dbt; pinned so the app doesn't rely on that)
+
+# AI: question -> intent classification only (never SQL)
+anthropic==1.11.0
 
 # Tests
 pytest==9.1.1

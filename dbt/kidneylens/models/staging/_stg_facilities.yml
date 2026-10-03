@@ -19,6 +19,9 @@ models:
       - name: facility_name
         description: Trimmed, single-spaced facility name; original capitalization kept.
 
+      - name: city
+        description: Trimmed, single-spaced city/town name as reported; original capitalization kept.
+
       - name: state
         description: Two-letter USPS code, uppercased. Includes DC and five territories.
         data_tests:

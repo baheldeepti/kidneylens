@@ -2,6 +2,9 @@ version: 2
 
 models:
   - name: dim_facility_current
+    config:
+      grants:
+        select: ['kidneylens_app']  # published to the Streamlit app (read-only)
     description: >
       Current facility attributes: exactly one row per CCN, all from the latest validated
       snapshot (see the model SQL for the validation rules). Service flags are
@@ -13,6 +16,8 @@ models:
         data_tests: [unique, not_null]
       - name: facility_name
         data_tests: [not_null]
+      - name: city
+        description: City/town as reported by CMS.
       - name: state
         data_tests: [not_null]
       - name: zip_code

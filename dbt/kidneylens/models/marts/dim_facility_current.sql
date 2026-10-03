@@ -56,6 +56,7 @@ select
     -- facility explorer + state filter
     f.ccn,
     f.facility_name,
+    f.city,
     f.state,
     f.zip_code,
 

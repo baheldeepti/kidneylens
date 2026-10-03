@@ -1,4 +1,4 @@
 [tool.pytest.ini_options]
-# Let tests import the project's packages (e.g. `ingestion`) from the repo root.
-pythonpath = ["."]
+# Let tests import `ingestion` (repo root) and the app modules in app/ (as Streamlit does).
+pythonpath = [".", "app"]
 testpaths = ["tests"]

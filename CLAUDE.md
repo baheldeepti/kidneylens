@@ -50,9 +50,10 @@ Authoritative metric definitions (formula, grain, missing-value behavior, limita
 
 ## Query safety
 
-- The app connects with a **read-only** database user.
-- The app runs only fixed, parameterized SQL that Python selects. No string-built SQL from user input.
-- If AI is added: it maps a question to an approved intent and validated parameters only. **AI must never generate SQL in V1.**
+- The app connects as **`kidneylens_app`** (`sql/create_app_role.sql`): SELECT on `analytics.dim_facility_current` and `analytics.mart_state_services` only, granted via dbt `grants` config so it survives rebuilds. Never grant it anything else.
+- The app runs only fixed, parameterized SQL that Python selects. No string-built SQL from user input. All SQL lives as constants in `app/queries.py`; user choices are validated against an approved list before being bound as parameters.
+- Questions reach the database only through `app/intents.py`: a request `{"intent": ..., "params": {...}}` must exactly match one of three approved intents (`FIND_PD_FACILITIES` [state required], `HOME_HD_TRAINING_SHARE` [state optional], `STAR_RATING_DISTRIBUTION` [state optional]); anything else raises `IntentError` before any SQL runs. Optional filters use separate predefined SQL constants, never dynamically added clauses.
+- `app/classifier.py` asks Claude (`claude-opus-5-5`, structured JSON output) to map a question to one of `FIND_PD_FACILITIES`, `HOME_HD_TRAINING_SHARE`, `STAR_RATING_DISTRIBUTION`, `CLARIFICATION_REQUIRED`, `UNSUPPORTED` plus a `state`. `validate_model_output()` checks every field before anything runs; only validated data intents go to `intents.run_intent()`. **Claude must never generate SQL, and model text never enters SQL.**
 
 ## Commands (planned; update as each milestone lands)
 
@@ -65,6 +66,7 @@ python -m ingestion.download         # download CMS CSV into data/raw/ (no-op if
 python -m ingestion.load_raw          # load latest snapshot into raw.raw_facilities (no-op if loaded)
 
 pytest                               # all Python tests
+.venv/bin/python scripts/failure_recovery_drill.py   # bad-snapshot drill in an isolated DB (--keep to inspect)
 pytest tests/test_load_raw.py::test_reloading_same_snapshot_is_a_noop   # single test (DB tests need docker compose up)
 
 cd dbt/kidneylens && cp profiles.yml.example profiles.yml   # once; profiles.yml is gitignored
@@ -73,7 +75,8 @@ dbt debug                            # check config + DB connection
 dbt build                            # run models + tests (from dbt/kidneylens)
 dbt test --select stg_facilities
 
-streamlit run app/main.py
+docker compose exec -T postgres psql -U kidneylens -d kidneylens < sql/create_app_role.sql   # once, before dbt build: read-only app role
+streamlit run app/streamlit_app.py   # from repo root; http://127.0.0.1:8501
 ```
 
 ## Coding conventions

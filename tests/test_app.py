@@ -36,7 +36,9 @@ def test_app_renders_all_sections_without_errors(require_app_database):
 
 def test_changing_state_updates_facility_explorer(require_app_database):
     at = run_app()
-    at.selectbox[0].set_value("PR").run()
+    box = at.selectbox[0]
+    other_state = next(s for s in reversed(box.options) if s != box.value)  # works with any loaded data
+    box.set_value(other_state).run()
     assert not at.exception, at.exception
     facility_table = at.dataframe[0].value
     assert len(facility_table) > 0

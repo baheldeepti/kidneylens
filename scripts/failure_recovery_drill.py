@@ -29,13 +29,18 @@ from pathlib import Path
 import psycopg
 
 ROOT = Path(__file__).resolve().parent.parent
-PYTHON = ROOT / ".venv" / "bin" / "python"
-DBT = ROOT / ".venv" / "bin" / "dbt"
+PYTHON = Path(sys.executable)          # the virtualenv running this script
+DBT = PYTHON.parent / "dbt"
 DBT_PROJECT = ROOT / "dbt" / "kidneylens"
 REAL_RAW_DIR = ROOT / "data" / "raw"
-PROD_DB = "kidneylens"
+PROD_DB = os.getenv("POSTGRES_DB", "kidneylens")
 DRILL_DB = "kidneylens_drill"
-ADMIN = dict(host="localhost", port="5432", user="kidneylens", password="local_dev_password")
+ADMIN = dict(
+    host=os.getenv("POSTGRES_HOST", "localhost"),
+    port=os.getenv("POSTGRES_PORT", "5432"),
+    user=os.getenv("POSTGRES_USER", "kidneylens"),
+    password=os.getenv("POSTGRES_PASSWORD", "local_dev_password"),
+)
 
 results: list[tuple[bool, str]] = []
 
@@ -104,11 +109,16 @@ def start_server(directory: Path) -> tuple[http.server.ThreadingHTTPServer, str]
 # --- Pipeline steps against the isolated copy ---------------------------------------
 
 def make_dbt_profile(work: Path) -> Path:
+    """A dbt profile that can only point at the drill database."""
     profiles_dir = work / "dbt_profiles"
     profiles_dir.mkdir()
-    text = (DBT_PROJECT / "profiles.yml").read_text()
-    assert f"dbname: {PROD_DB}" in text, "unexpected profiles.yml; refusing to guess the drill target"
-    (profiles_dir / "profiles.yml").write_text(text.replace(f"dbname: {PROD_DB}", f"dbname: {DRILL_DB}"))
+    (profiles_dir / "profiles.yml").write_text(json.dumps({  # JSON is valid YAML
+        "kidneylens": {"target": "drill", "outputs": {"drill": {
+            "type": "postgres", "host": ADMIN["host"], "port": int(ADMIN["port"]),
+            "user": ADMIN["user"], "password": ADMIN["password"],
+            "dbname": DRILL_DB, "schema": "analytics", "threads": 4,
+        }}}
+    }))
     return profiles_dir
 
 

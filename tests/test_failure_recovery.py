@@ -1,7 +1,7 @@
 """Runs scripts/failure_recovery_drill.py: a duplicated-CCN snapshot must be blocked from
 publication, the previous snapshot must stay current, and real data must be untouched.
 
-Needs PostgreSQL running, a loaded real snapshot, and dbt/kidneylens/profiles.yml. ~15 seconds.
+Needs PostgreSQL running and a downloaded snapshot in data/raw/. ~15 seconds.
 """
 
 import subprocess
@@ -11,17 +11,16 @@ from pathlib import Path
 import psycopg
 import pytest
 
+from ingestion.load_raw import conninfo_from_env
+
 ROOT = Path(__file__).resolve().parent.parent
 
 
 def test_failure_recovery_drill():
     if not (ROOT / "data" / "raw" / "manifest.json").exists():
         pytest.skip("no downloaded snapshot (python -m ingestion.download)")
-    if not (ROOT / "dbt" / "kidneylens" / "profiles.yml").exists():
-        pytest.skip("dbt/kidneylens/profiles.yml not configured")
     try:
-        psycopg.connect("host=localhost dbname=kidneylens user=kidneylens password=local_dev_password",
-                        connect_timeout=3).close()
+        psycopg.connect(conninfo_from_env(), connect_timeout=3).close()
     except psycopg.OperationalError:
         pytest.skip("PostgreSQL is not running (docker compose up -d)")
 

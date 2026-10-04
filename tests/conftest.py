@@ -1,8 +1,12 @@
 """Shared pytest fixtures.
 
 Database tests use a separate `kidneylens_test` database so they never touch real data.
-They are skipped (with a clear reason) if PostgreSQL is not running.
+They are skipped (with a clear reason) if PostgreSQL is not running, EXCEPT when
+KIDNEYLENS_NO_SKIPS=1 (set in CI): then a skip counts as a failure, so missing setup can
+never make CI pass with less coverage.
 """
+
+import os
 
 import psycopg
 import pytest
@@ -31,3 +35,12 @@ def db(test_conninfo):
     with psycopg.connect(test_conninfo, autocommit=True) as conn:
         conn.execute("DROP SCHEMA IF EXISTS raw CASCADE")
         yield conn
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    outcome = yield
+    report = outcome.get_result()
+    if report.skipped and os.environ.get("KIDNEYLENS_NO_SKIPS") == "1":
+        report.outcome = "failed"
+        report.longrepr = f"Skipped tests are not allowed when KIDNEYLENS_NO_SKIPS=1: {report.longrepr}"

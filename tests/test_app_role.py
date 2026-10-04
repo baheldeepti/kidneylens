@@ -7,6 +7,7 @@ Needs: docker compose up -d, sql/create_app_role.sql applied, dbt build.
 """
 
 import subprocess
+import sys
 from pathlib import Path
 
 import psycopg
@@ -109,7 +110,7 @@ def test_select_still_works_after_dbt_rebuilds_the_tables():
     if not (dbt_dir / "profiles.yml").exists():
         pytest.skip("dbt/kidneylens/profiles.yml not configured")
     proc = subprocess.run(
-        [str(ROOT / ".venv" / "bin" / "dbt"), "run", "-q", "--select", "dim_facility_current", "mart_state_services"],
+        [str(Path(sys.executable).parent / "dbt"), "run", "-q", "--select", "dim_facility_current", "mart_state_services"],
         cwd=dbt_dir, capture_output=True, text=True, timeout=180,
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr

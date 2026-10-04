@@ -30,7 +30,32 @@ models:
         data_tests: [not_null]
       - name: home_training_share
         description: >
-          training_yes_count / (training_yes_count + training_no_count), from 0 to 1, unrounded.
-          NULL when no facility in the state reports Yes or No.
+          training_yes_count / (training_yes_count + training_no_count), from 0 to 1, stored as
+          numeric(7,6) (6 decimals). NULL when no facility in the state reports Yes or No.
       - name: snapshot_id
         data_tests: [not_null]
+
+unit_tests:
+  - name: mart_state_services_unknown_and_zero_denominator
+    description: >
+      docs/metrics.yml rules on inputs the real snapshot never contains: unknown (NULL) is
+      excluded from the share and counted separately; denominator 0 gives NULL, never 0;
+      an all-No state gives a real 0; an all-Yes state gives 1.
+    model: mart_state_services
+    given:
+      - input: ref('dim_facility_current')
+        rows:
+          - {ccn: "000001", state: MX, offers_home_hemodialysis_training: true,  snapshot_id: S1, downloaded_at: "2026-10-03 05:30:20+00"}
+          - {ccn: "000002", state: MX, offers_home_hemodialysis_training: false, snapshot_id: S1, downloaded_at: "2026-10-03 05:30:20+00"}
+          - {ccn: "000003", state: MX, offers_home_hemodialysis_training: null,  snapshot_id: S1, downloaded_at: "2026-10-03 05:30:20+00"}
+          - {ccn: "000004", state: UN, offers_home_hemodialysis_training: null,  snapshot_id: S1, downloaded_at: "2026-10-03 05:30:20+00"}
+          - {ccn: "000005", state: UN, offers_home_hemodialysis_training: null,  snapshot_id: S1, downloaded_at: "2026-10-03 05:30:20+00"}
+          - {ccn: "000006", state: "NO", offers_home_hemodialysis_training: false, snapshot_id: S1, downloaded_at: "2026-10-03 05:30:20+00"}
+          - {ccn: "000007", state: "NO", offers_home_hemodialysis_training: false, snapshot_id: S1, downloaded_at: "2026-10-03 05:30:20+00"}
+          - {ccn: "000008", state: YS, offers_home_hemodialysis_training: true,  snapshot_id: S1, downloaded_at: "2026-10-03 05:30:20+00"}
+    expect:
+      rows:
+        - {state: MX, facility_count: 3, training_yes_count: 1, training_no_count: 1, training_unknown_count: 1, training_reporting_count: 2, home_training_share: 0.5,  snapshot_id: S1}
+        - {state: UN, facility_count: 2, training_yes_count: 0, training_no_count: 0, training_unknown_count: 2, training_reporting_count: 0, home_training_share: null, snapshot_id: S1}
+        - {state: "NO", facility_count: 2, training_yes_count: 0, training_no_count: 2, training_unknown_count: 0, training_reporting_count: 2, home_training_share: 0,    snapshot_id: S1}
+        - {state: YS, facility_count: 1, training_yes_count: 1, training_no_count: 0, training_unknown_count: 0, training_reporting_count: 1, home_training_share: 1,    snapshot_id: S1}

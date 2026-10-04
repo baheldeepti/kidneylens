@@ -1,0 +1,95 @@
+# Continuous integration for KidneyLens.
+# Builds the whole pipeline from scratch in a clean environment and runs every test.
+# It never deploys or publishes anything, and it never contacts CMS or the Claude API.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Read-only access to the repository is all this workflow needs.
+permissions:
+  contents: read
+
+# If you push again while a run is still going, cancel the older run for that branch/PR.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Pipeline and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # Same values as docker-compose.yml / .env.example. These are throwaway CI-only
+    # credentials for a database that exists only for the length of this job.
+    env:
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: kidneylens
+      POSTGRES_USER: kidneylens
+      POSTGRES_PASSWORD: local_dev_password
+      KIDNEYLENS_NO_SKIPS: "1"   # a skipped test counts as a failure in CI
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: kidneylens
+          POSTGRES_USER: kidneylens
+          POSTGRES_PASSWORD: local_dev_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kidneylens -d kidneylens"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v7
+
+      - name: Install Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install -r requirements.txt
+          .venv/bin/pip check
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
+
+      - name: Prepare database (schemas and read-only app role)
+        run: |
+          docker exec -i ${{ job.services.postgres.id }} psql -v ON_ERROR_STOP=1 -U kidneylens -d kidneylens < sql/bootstrap.sql
+          docker exec -i ${{ job.services.postgres.id }} psql -v ON_ERROR_STOP=1 -U kidneylens -d kidneylens < sql/create_app_role.sql
+
+      - name: Ingest sample CMS snapshot (real downloader and loader)
+        run: |
+          python -m http.server 8000 --bind 127.0.0.1 --directory tests/fixtures/cms_sample &
+          for i in $(seq 1 20); do curl -sf -o /dev/null http://127.0.0.1:8000/DFC_FACILITY.csv && break; sleep 0.5; done
+          python -m ingestion.download --url http://127.0.0.1:8000/DFC_FACILITY.csv
+          python -m ingestion.load_raw
+
+      - name: Configure dbt profile
+        run: cp dbt/kidneylens/profiles.yml.example dbt/kidneylens/profiles.yml
+
+      - name: dbt debug
+        working-directory: dbt/kidneylens
+        run: dbt debug
+
+      - name: dbt build
+        working-directory: dbt/kidneylens
+        run: dbt build
+
+      - name: Run pytest
+        run: pytest -v -ra

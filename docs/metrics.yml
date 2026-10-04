@@ -94,7 +94,7 @@ metrics:
     numerator: training_yes_count
     denominator: training_yes_count + training_no_count   # facilities reporting Yes or No
     formula: training_yes_count / (training_yes_count + training_no_count)
-    value_range: 0 to 1 (stored as an unrounded fraction; round only for display, e.g. 0.3200 -> "32.0%")
+    value_range: 0 to 1, stored as numeric(7,6), i.e. rounded to 6 decimals (0.333333); round further only for display (e.g. "33.3%")
     missing_value_behavior: >
       Facilities with an unknown value are excluded from BOTH numerator and denominator
       and must be displayed alongside the share as training_unknown_count.

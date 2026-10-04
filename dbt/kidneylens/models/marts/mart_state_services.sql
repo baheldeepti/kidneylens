@@ -31,8 +31,12 @@ select
     training_no_count,
     training_unknown_count,
     training_yes_count + training_no_count                                    as training_reporting_count,
-    training_yes_count::numeric
-        / nullif(training_yes_count + training_no_count, 0)                   as home_training_share,
+    -- numeric(7,6): a 0-1 fraction rounded to 6 decimals, so output is predictable
+    -- (plain numeric division returns e.g. 0.50000000000000000000 and 0E-20).
+    cast(
+        training_yes_count::numeric / nullif(training_yes_count + training_no_count, 0)
+        as numeric(7, 6)
+    )                                                                         as home_training_share,
     snapshot_id,
     downloaded_at
 from counts

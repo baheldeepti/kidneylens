@@ -34,19 +34,33 @@ def test_app_renders_all_sections_without_errors(require_app_database):
     ]
 
 
+def pd_counts(at: AppTest) -> tuple[int, int]:
+    """(report offering PD, PD status unknown) from the Facility Explorer metrics."""
+    metrics = {m.label: int(m.value.replace(",", "")) for m in at.metric}
+    return metrics["Report offering PD"], metrics["PD status unknown"]
+
+
 def test_changing_state_updates_facility_explorer(require_app_database):
+    """Works with whatever data is loaded: checks the first and last state in the dropdown,
+    covering both a state with PD facilities and (in the CI sample) one with none."""
     at = run_app()
-    box = at.selectbox[0]
-    other_state = next(s for s in reversed(box.options) if s != box.value)  # works with any loaded data
-    box.set_value(other_state).run()
-    assert not at.exception, at.exception
-    facility_table = at.dataframe[0].value
-    assert len(facility_table) > 0
-    assert set(facility_table["Offers PD (reported)"]) <= {"Yes", "Unknown (not reported)"}
+    options = at.selectbox[0].options
+    for state in dict.fromkeys([options[0], options[-1]]):
+        at.selectbox[0].set_value(state).run()
+        assert not at.exception, at.exception
+        yes, unknown = pd_counts(at)
+        tables = [d.value for d in at.dataframe if "Offers PD (reported)" in d.value.columns]
+        if yes + unknown:
+            assert len(tables) == 1 and len(tables[0]) == yes + unknown, state
+            assert set(tables[0]["Offers PD (reported)"]) <= {"Yes", "Unknown (not reported)"}
+        else:
+            assert tables == [], state
+            assert any(f"No facilities in {state} report offering PD." in m.value for m in at.markdown)
 
 
 def test_star_table_has_separate_not_rated_category(require_app_database):
     at = run_app()
-    ratings = list(at.dataframe[2].value["Rating"])
+    star_table = next(d.value for d in at.dataframe if "Rating" in d.value.columns)  # by content, not position
+    ratings = list(star_table["Rating"])
     assert ratings[-1] == "Not rated"
     assert "0 stars" not in ratings
